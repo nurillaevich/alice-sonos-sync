@@ -1,0 +1,125 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Alice ↔ Sonos Sync",
+        "description": "Nima qo'shmoqchisiz?",
+        "menu_options": {
+          "pair": "🎵 Alice → Sonos juftlik (musiqani Sonos'ga uzatish)",
+          "group": "👥 Sonos guruhi (2+ kolonkani bir-biriga ulash)"
+        }
+      },
+      "pair": {
+        "title": "Alice → Sonos juftlik",
+        "description": "Manba (Yandex Station / Alice) va chiqish Sonos kolonka(lar)ni tanlang. Bir nechta Sonos tanlasangiz — multi-room: hammasi avtomatik guruhlanib, bir xil musiqani sinxron chaladi. Barcha vaqt va ovoz sozlamalarini keyinroq «Sozlash» (Configure) orqali o'zgartirishingiz mumkin.",
+        "data": {
+          "alice_entity": "Alice (Yandex Station) — manba",
+          "sonos_entities": "Sonos kolonkalar (Music Assistant) — chiqish"
+        },
+        "data_description": {
+          "alice_entity": "Musiqa shu yerda boshlanadi va ovoz bilan boshqariladigan media player.",
+          "sonos_entities": "Sonos'ning Music Assistant'dagi entity'lari (HA'ning o'z Sonos integratsiyasi entity'si emas). Bir nechta tanlasangiz, barcha xonalarda bir xil, sinxron chaladi — birinchisi yetakchi bo'ladi."
+        }
+      },
+      "group": {
+        "title": "Sonos guruhi",
+        "description": "2 yoki undan ortiq kolonkani bitta knopka (switch) bilan bir-biriga ulaydigan guruh yaratadi. Knopka YOQILGANDA barcha kolonkalar yetakchiga qo'shilib, bir xil musiqani sinxron chaladi; O'CHIRILGANDA har biri yana mustaqil bo'ladi. Alice bu yerda ishtirok etmaydi — bu faqat kolonkalarni birlashtirish uchun.",
+        "data": {
+          "group_leader": "Yetakchi kolonka (Music Assistant)",
+          "group_members": "Qo'shiladigan kolonkalar (Music Assistant)"
+        },
+        "data_description": {
+          "group_leader": "Guruhning «xo'jayini» — qolganlari shunga qo'shiladi va shu chalayotgan narsani takrorlaydi.",
+          "group_members": "Yetakchiga ulanadigan bir yoki bir nechta kolonka. Hammasi Music Assistant entity'lari bo'lishi shart."
+        }
+      }
+    },
+    "error": {
+      "same_entity": "Manba chiqish kolonkalari ichida bo'lmasligi kerak.",
+      "no_outputs": "Kamida bitta Sonos kolonka tanlang.",
+      "music_assistant_missing": "Music Assistant integratsiyasi topilmadi. Avval Music Assistant'ni o'rnatib sozlang.",
+      "no_members": "Kamida bitta qo'shiladigan kolonka tanlang.",
+      "leader_in_members": "Yetakchi kolonka qo'shiladiganlar ichida bo'lmasligi kerak."
+    },
+    "abort": {
+      "already_configured": "Bu kombinatsiya allaqachon sozlangan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sinxron sozlamalari",
+        "description": "Crossfade vaqti va ovozlar. Eng muhim ikki tugma: «Sinxron offset» (Sonos Alice'dan orqada qolsa — oshiring) va «Sonos head-start» (Sonos baribir kech eshitilsa — oshiring).",
+        "data": {
+          "sync_offset": "Sinxron offset (soniya)",
+          "handoff_delay": "Boshlash kechikishi (soniya)",
+          "steps": "Crossfade qadamlari",
+          "sonos_headstart_ms": "Sonos head-start (ms)",
+          "alice_gap_ms": "Alice pauzasi (ms)",
+          "sonos_floor": "Sonos boshlang'ich ovozi",
+          "sonos_target": "Sonos yakuniy ovozi",
+          "alice_end_volume": "Alice yakuniy ovozi",
+          "stop_fade_floor": "To'xtash: Sonos pasayish chegarasi",
+          "alice_restore_volume": "To'xtash: Alice qaytariladigan ovoz",
+          "stop_steps": "To'xtash: pasayish qadamlari",
+          "stop_step_delay_ms": "To'xtash: qadamlar orasidagi kutish (ms)",
+          "stop_confirm_delay": "To'xtashni tasdiqlash kechikishi (s)",
+          "play_wait_timeout": "Timeout: Sonos ijrosini kutish (s)",
+          "buffer_wait_timeout": "Timeout: seekdan keyin kutish (s)",
+          "follow_sonos_pause": "Sonos'dagi pauzani Alice'ga ham qo'llash",
+          "restore_sonos_volume": "To'xtagach Sonos ovozini qaytarish",
+          "regroup_each_track": "Har trekda qayta guruhlash",
+          "seek_each_output": "Har bir chiqishni alohida seek qilish",
+          "skip_seek": "Seekni o'tkazib yuborish",
+          "redirect_volume": "Alice ovoz buyrug'ini kolonkalarga yo'naltirish",
+          "track_uri_prefix": "Trek URI prefiksi",
+          "media_type": "Media turi"
+        },
+        "data_description": {
+          "sync_offset": "Sonos Alice bilan bir xil sekunddan chiqishi uchun tuzatish. Sonos orqada bo'lsa — oshiring; oldinda bo'lsa — kamaytiring.",
+          "handoff_delay": "Alice'da musiqa boshlangach, uzatishdan oldin shuncha kutadi (0 = darhol).",
+          "steps": "Crossfade necha qadamda bajariladi. Ko'p = silliqroq, lekin sekinroq.",
+          "sonos_headstart_ms": "Har qadamda Sonos ko'tarilgach, Alice tushishidan oldingi pauza. Sonos'ning buyruq kechikishini yopadi.",
+          "alice_gap_ms": "Alice tushgandan keyin keyingi qadamgacha kutish.",
+          "sonos_floor": "Sonos shu ovozdan boshlab ko'tariladi.",
+          "sonos_target": "Crossfade oxirida Sonos shu ovozga chiqadi. Sonos Amp / Five / Arc kuchli — pastroqdan boshlang (standart 0.25).",
+          "alice_end_volume": "Crossfade oxirida Alice shu ovozga tushadi (0 = jim; agar Station 0 da pauza qilsa, 0.01 qiling).",
+          "stop_fade_floor": "Musiqa to'xtaganda Sonos pauzadan oldin shu ovozgacha pasayadi.",
+          "alice_restore_volume": "To'xtagandan keyin Alice ovozi shu darajaga qaytadi.",
+          "stop_steps": "To'xtash pasayishi necha qadamda bajariladi.",
+          "stop_step_delay_ms": "To'xtash pasayish qadamlari orasidagi kutish.",
+          "stop_confirm_delay": "Musiqa to'xtaganda shuncha kutib, qaytadan tekshiradi. Agar shu vaqt ichida musiqa qaytsa (Alice'ga 'balandlat' kabi ovozli buyruq berilgani uchun stansiya bir lahzaga to'xtagan bo'lsa), to'xtash bekor qilinadi — kolonkalar to'xtamaydi va ovoz buyrug'i ularga qo'llanadi. Ovoz buyruqlari ishlashi uchun >0 bo'lishi kerak; ovozli buyruqlaringiz uzunroq bo'lsa (masalan 'ob-havo qanaqa') oshiring.",
+          "play_wait_timeout": "Davom etishdan oldin Sonos 'playing' holatiga o'tishini shuncha kutamiz.",
+          "buffer_wait_timeout": "Seekdan keyin player yangi pozitsiyani qabul qilishini shuncha kutamiz.",
+          "follow_sonos_pause": "Sonos ilovasi yoki Sonos'ning o'z tugmasi bilan pauza qilsangiz, Alice ham pauza bo'ladi (aks holda u jim holda o'zi chalishda davom etadi) va ovozi qaytariladi. Sonos'da yana «Play» bossangiz, Alice ham jim holda davom etadi. Trek tabiiy tugashi (idle) pauza hisoblanmaydi.",
+          "restore_sonos_volume": "Musiqa to'xtaganda Sonos pasayib pauza bo'ladi, keyin ovozi pasayishdan oldingi darajaga qaytariladi — Sonos ilovasidan keyingi ijro 1% dan emas, odatdagi ovozdan boshlanadi.",
+          "regroup_each_track": "Har trek boshlanganda kolonkalarni qaytadan guruhlaydi. Xonalar vaqt o'tib bir-biridan ajralib ketsa yoqing (har trekda biroz uzilish bo'lishi mumkin).",
+          "seek_each_output": "Seekni faqat yetakchiga emas, har bir kolonkaga alohida yuboradi. Kolonkalaringiz bitta Sonos guruhiga birlasha olmasa yoqing.",
+          "skip_seek": "Seek qilinganda stream uzilsa (progress 0:00 ga qaytsa) yoqing: kolonkalar trekni 0:00 dan boshlaydi, sinxron faqat «Sinxron offset» bilan taxminiy bo'ladi, lekin stream uzilmaydi. Sonos'da odatda kerak emas.",
+          "redirect_volume": "Handoff bo'lgach (Alice jim, kolonkalar chalayotganda) Alice'ga 'ovozni balandlat/pasaytir' desangiz, o'zgarish Alice'ga emas, SONOS'ga qo'llanadi; Alice jim qoladi. Faqat 'Alice yakuniy ovozi' past (≤0.15) bo'lganda ishlaydi. ESLATMA: 'pasaytir' ishlashi uchun 'Alice yakuniy ovozi' 0 dan katta bo'lishi kerak (masalan 0.05) — aks holda Alice 0 dan pastga tusholmaydi va 'pasaytir' sezilmaydi.",
+          "track_uri_prefix": "Alice'ning media_content_id qiymati oldiga qo'shiladi. Yandex Music uchun 'yandex_music://track/'; boshqa Music Assistant provayderi uchun o'zgartiring.",
+          "media_type": "music_assistant.play_media uchun media turi (odatda 'track')."
+        }
+      }
+    },
+    "abort": {
+      "group_no_options": "Sonos guruhida sozlanadigan parametr yo'q — uni yoqish/o'chirish uchun «Guruh» knopkasidan foydalaning."
+    }
+  },
+  "entity": {
+    "switch": {
+      "sync_enabled": {
+        "name": "Sinxron"
+      },
+      "group_enabled": {
+        "name": "Guruh"
+      }
+    }
+  },
+  "issues": {
+    "play_media_failed": {
+      "title": "Music Assistant qo'shiqni Sonos'da chala olmadi",
+      "description": "**{title}**: Music Assistant `{media_id}` trekini `{player}` kolonkasida chala olmadi, shuning uchun musiqa faqat Alice'da qoldi (Sonos ovozi avvalgi holatiga qaytarildi).\n\nXato: `{error}`\n\nAgar xatoda *The provider is currently unavailable* yozilgan bo'lsa — Music Assistant'da Yandex Music provayderi qo'shilmagan yoki ishlamayapti. Music Assistant → Settings → Music sources → «Add a music source» → **Yandex Music** ni qo'shing va Yandex hisobingizga kiring. Boshqa provayder ishlatsangiz, integratsiya sozlamalaridagi «Trek URI prefiksi»ni tekshiring. Keyingi muvaffaqiyatli uzatishda bu ogohlantirish o'zi yo'qoladi."
+    }
+  }
+}

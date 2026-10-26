@@ -1,0 +1,14 @@
+{
+  "domain": "alice_sonos_sync",
+  "name": "Alice ↔ Sonos Sync",
+  "after_dependencies": ["music_assistant"],
+  "codeowners": ["@nurillaevich"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/nurillaevich/alice-sonos-sync",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/nurillaevich/alice-sonos-sync/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

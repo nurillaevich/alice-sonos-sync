@@ -3,6 +3,27 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.0.1] - 2026-10-27
+
+### Tuzatildi
+- **Alice pauza qilinganda Sonos'dagi boshqa ijro (telefondan AirPlay) ham
+  pasaytirilib to'xtatilardi.** Real holatda ko'rildi: Music Assistant'da Yandex
+  Music provayderi yo'qligi sababli birorta ham uzatish bo'lmagan, keyin
+  telefondan Sonos'ga AirPlay qo'yilgan — Alice pauza qilinganda integratsiya
+  o'sha AirPlay musiqasini 1% gacha tushirib pauza qilib qo'ygan. Endi:
+  - to'xtash faqat integratsiya trekni haqiqatan **muvaffaqiyatli uzatgan**
+    bo'lsa ishlaydi;
+  - manbasi **AirPlay / TV / Line-in** bo'lgan kolonkaga tegilmaydi —
+    Sonos'ni boshqa manba egallab olgan bo'lsa, u o'z holicha chalaveradi;
+  - Sonos'dagi AirPlay pauzasi Alice'ni pauza qilmaydi.
+- Uzatishdan keyin Sonos treki tugab `idle` bo'lgan yoki AirPlay egallagan
+  bo'lsa, Alice to'xtaganda uning ovozi endi baribir qaytariladi (avval jim
+  qolib ketardi).
+
+### Tasdiqlandi (o'zgarmagan)
+- Sonos'da AirPlay pauzada turganda Alice yangi qo'shiq boshlasa, qo'shiq
+  Sonos'ga uzatiladi (test qo'shildi).
+
 ## [1.0.0] - 2026-10-26
 
 Birinchi versiya — [alice-arylic-sync](https://github.com/nurillaevich/alice-arylic-sync)

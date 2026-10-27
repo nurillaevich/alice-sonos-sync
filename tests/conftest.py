@@ -114,6 +114,7 @@ class FakePlayers:
                 self.set(
                     entity_id,
                     "playing",
+                    source="Music Assistant Queue",
                     media_content_id=call.data["media_id"],
                     media_position=0,
                     media_position_updated_at=dt_util.utcnow(),

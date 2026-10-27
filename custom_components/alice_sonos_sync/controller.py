@@ -82,6 +82,10 @@ PAUSE_LAND_TIMEOUT = 3.0
 # to the next usable output instead of breaking grouping/play/seek for everyone).
 UNAVAILABLE_STATES = (None, "unavailable", "unknown")
 
+# Sources that mean someone else is using the speaker — a phone's AirPlay, the
+# TV input, line-in. Alice's stop or pause must never fade/pause those.
+EXTERNAL_SOURCES = ("airplay", "tv", "line-in", "line_in", "linein", "bluetooth", "spotify connect")
+
 # MediaPlayerEntityFeature.GROUPING — the supported_features bit a player sets
 # when it can be grouped via media_player.join. Read it up front so we can warn
 # precisely instead of letting join fail with "not supported by ...".
@@ -272,6 +276,17 @@ class SyncController:
     def _any_output_playing(self) -> bool:
         return any(self._state(e) == "playing" for e in self.sonos_entities)
 
+    @staticmethod
+    def _is_external_source(source: Any) -> bool:
+        return str(source or "").strip().lower() in EXTERNAL_SOURCES
+
+    def _playing_our_stream(self, entity_id: str) -> bool:
+        """Playing, and not from an outside source (AirPlay, TV, line-in) that
+        has taken the speaker over since the handoff."""
+        return self._state(entity_id) == "playing" and not self._is_external_source(
+            self._attr(entity_id, "source")
+        )
+
     def _effective_leader(self) -> str:
         """The first output that is actually available, so an offline
         sonos_entities[0] does not break grouping/play/seek/pause for every
@@ -461,16 +476,22 @@ class SyncController:
         return old.attributes.get("media_content_id") != content_id
 
     def _is_stop_trigger(self, old: State | None, new: State) -> bool:
-        """MUSIC stopped on Alice while any output is playing (echoes the
-        blueprint conditions: don't react to voice answers/news/alarms ending,
-        and don't touch the outputs if none of them is playing)."""
+        """MUSIC stopped on Alice after a handoff that actually happened.
+
+        Don't react to voice answers/news/alarms ending. And only undo our own
+        handoff: when it failed (nothing reached the Sonos) or never ran, the
+        Sonos may be playing someone else's music — a phone's AirPlay — which
+        an Alice pause must leave alone. Our own pause of Alice (mirroring a
+        Sonos pause) is not a stop either."""
         if old is None or old.state != "playing":
             return False
         if new.state not in STOP_STATES:
             return False
         if old.attributes.get("media_content_type") != "music":
             return False
-        return self._any_output_playing()
+        if self._paused_by_sonos:
+            return False
+        return self._handoff_content_id is not None
 
     def _music_resumed(self) -> bool:
         """True when Alice is playing music again while an output is still
@@ -507,6 +528,10 @@ class SyncController:
         if old is None or new is None:
             return
         if old.state == "playing" and new.state == "paused":
+            # A paused AirPlay/TV stream that had taken the Sonos over is not
+            # a pause of Alice's music.
+            if self._is_external_source(old.attributes.get("source")):
+                return
             if self._alice_on_handed_off_track():
                 _LOGGER.debug("Sonos %s paused from outside — confirming", new.entity_id)
                 self._schedule(self._follow_sonos_pause(), "follow_pause")
@@ -966,17 +991,25 @@ class SyncController:
         fade_floor = float(self._opt(OPT_STOP_FADE_FLOOR))
         steps = max(1, int(self._opt(OPT_STOP_STEPS)))
         step_delay = int(self._opt(OPT_STOP_STEP_DELAY_MS)) / 1000
-        # Each room keeps its OWN volume in a group — fade every output along
-        # its own curve, so a room the user turned down never jumps up.
+        # Only the outputs still playing OUR stream are faded and paused. A room
+        # that AirPlay / the TV has taken over since the handoff keeps playing,
+        # and one that already went idle needs nothing. Each room keeps its OWN
+        # volume in a group — fade every output along its own curve, so a room
+        # the user turned down never jumps up.
         start_volumes = {
             entity_id: _safe_float(self._attr(entity_id, "volume_level"), 0.25)
             for entity_id in self.sonos_entities
+            if self._playing_our_stream(entity_id)
         }
 
         try:
             # 1) Fade all outputs down to the floor together (per-entity curve,
             #    concurrent within each step so the rooms stay in lockstep).
-            for i in range(1, steps + 1):
+            #    Nothing of ours still playing (AirPlay/TV took over, or the
+            #    track already ended) = nothing to fade or pause: go straight to
+            #    giving Alice her voice back.
+            fade_steps = steps if start_volumes else 0
+            for i in range(1, fade_steps + 1):
                 # A late blip, or the user replaying the same track, can resume
                 # music partway through the fade. Abort: restore the outputs to
                 # where they were and keep the handoff, rather than pausing them
@@ -1001,7 +1034,7 @@ class SyncController:
 
             # Final guard: music can resume in the gap between the last fade step
             # and the pause — abort the same way rather than silencing it.
-            if self._music_resumed():
+            if start_volumes and self._music_resumed():
                 await self._restore_outputs(start_volumes)
                 _LOGGER.debug(
                     "Stop aborted before pause: music resumed — outputs restored, "
@@ -1015,7 +1048,11 @@ class SyncController:
             #    then does NOT reach, leaving it playing after a "stop". Pausing
             #    each output is idempotent for grouped members. One failing
             #    player must not stop the rest.
-            to_pause = [self.leader, *(e for e in self.sonos_entities if e != self.leader)]
+            to_pause = [
+                e
+                for e in (self.leader, *(e for e in self.sonos_entities if e != self.leader))
+                if e in start_volumes
+            ]
             for entity_id in to_pause:
                 try:
                     await self.hass.services.async_call(
@@ -1029,7 +1066,7 @@ class SyncController:
                     _LOGGER.warning("media_pause failed on %s, continuing", entity_id)
 
             # 3) Sonos: playing volume back once paused.
-            if bool(self._opt(OPT_RESTORE_SONOS_VOLUME)):
+            if start_volumes and bool(self._opt(OPT_RESTORE_SONOS_VOLUME)):
                 await self._restore_paused_outputs(start_volumes)
         except asyncio.CancelledError:
             raise

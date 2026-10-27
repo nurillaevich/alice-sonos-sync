@@ -32,6 +32,7 @@ emas: biri oldinda, biri orqada yangraydi yoki ikkalasi bir vaqtda gapirib,
 | **Alice'da musiqa to'xtadi** | Sonos yumshoq pasayib pauza bo'ladi, keyin Sonos ovozi **avvalgi darajaga qaytariladi**; Alice ovozi belgilangan darajaga (mas. **50%**) qaytadi. |
 | **Sonos'da pauza bosildi** (ilova yoki tugma) | Alice ham pauza bo'ladi va ovozi qaytadi. Sonos'da yana **Play** bossangiz — Alice ham jim holda davom etadi. |
 | **"Alisa, gromche / tishe"** | Handoff'dan keyin ovoz buyrug'i Alice'ga emas, **Sonos'ga** qo'llanadi. |
+| **Sonos'da telefondan AirPlay (yoki TV / Line-in) chalayapti** | Alice pauza/stop qilinsa, Sonos'ga **tegilmaydi** — ikkalasi o'z holicha davom etadi. Alice yangi qo'shiq boshlasa — qo'shiq Sonos'ga uzatiladi. |
 
 ---
 

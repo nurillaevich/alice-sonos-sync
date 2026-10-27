@@ -239,6 +239,89 @@ async def test_new_track_from_sonos_app_does_not_resume_alice(hass: HomeAssistan
     assert players.state(ALICE) == "paused"
 
 
+def _sonos_pauses(players: FakePlayers) -> list[dict]:
+    return [c for c in players.called("media_player", "media_pause") if c["entity_id"] == SONOS]
+
+
+async def test_alice_pause_leaves_airplay_alone_when_handoff_failed(hass: HomeAssistant, players) -> None:
+    """The live incident: no Yandex Music provider, so every handoff failed; a
+    phone then AirPlayed to the Sonos, and pausing Alice faded/paused it."""
+    _, controller = await _setup(hass, [SONOS])
+    players.fail_play_media = RuntimeError("The provider is currently unavailable")
+    await _alice_starts(hass, players, controller)
+    players.set(SONOS, "playing", source="AirPlay", volume_level=1.0, media_content_id="")
+
+    players.set(ALICE, "paused")
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    await wait_until_idle(controller)
+
+    assert not _sonos_pauses(players)
+    assert players.state(SONOS) == "playing"
+    assert players.attr(SONOS, "volume_level") == 1.0
+    assert players.attr(ALICE, "volume_level") == 0.6  # never muted, so left as is
+
+
+async def test_alice_pause_after_airplay_takeover_keeps_airplay(hass: HomeAssistant, players) -> None:
+    _, controller = await _setup(hass, [SONOS])
+    await _alice_starts(hass, players, controller)
+    # A phone takes the Sonos over with AirPlay while Alice plays on, muted.
+    players.set(SONOS, "playing", source="AirPlay", volume_level=0.4, media_content_id="")
+
+    players.set(ALICE, "paused")
+    await hass.async_block_till_done()
+    await wait_until_idle(controller)
+
+    assert not _sonos_pauses(players)
+    assert players.state(SONOS) == "playing"
+    assert players.attr(SONOS, "volume_level") == 0.4
+    assert players.attr(ALICE, "volume_level") == 0.5  # Alice gets her voice back
+    assert controller.last_run == "smooth_stop"
+
+
+async def test_alice_track_after_airplay_pause_goes_to_sonos(hass: HomeAssistant, players) -> None:
+    _, controller = await _setup(hass, [SONOS])
+    players.set(SONOS, "paused", source="AirPlay", volume_level=1.0, media_content_id="")
+
+    await _alice_starts(hass, players, controller)
+
+    (play,) = players.called("music_assistant", "play_media")
+    assert play["media_id"] == TRACK_URI
+    assert players.state(SONOS) == "playing"
+    assert players.attr(SONOS, "source") == "Music Assistant Queue"
+    assert players.attr(SONOS, "volume_level") == 0.25
+    assert players.attr(ALICE, "volume_level") == 0
+
+
+async def test_airplay_pause_after_takeover_does_not_pause_alice(hass: HomeAssistant, players) -> None:
+    _, controller = await _setup(hass, [SONOS])
+    await _alice_starts(hass, players, controller)
+    players.set(SONOS, "playing", source="AirPlay", media_content_id="")
+
+    players.set(SONOS, "paused")
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    await wait_until_idle(controller)
+
+    assert not players.called("media_player", "media_pause")
+    assert players.state(ALICE) == "playing"
+
+
+async def test_alice_stop_after_sonos_track_ended_gives_alice_voice_back(
+    hass: HomeAssistant, players
+) -> None:
+    _, controller = await _setup(hass, [SONOS])
+    await _alice_starts(hass, players, controller)
+    players.set(SONOS, "idle")  # Music Assistant reached the end of the track
+
+    players.set(ALICE, "paused")
+    await hass.async_block_till_done()
+    await wait_until_idle(controller)
+
+    assert not _sonos_pauses(players)
+    assert players.attr(ALICE, "volume_level") == 0.5
+
+
 async def test_play_media_failure_keeps_music_on_alice(hass: HomeAssistant, players) -> None:
     _, controller = await _setup(hass, [SONOS])
     players.fail_play_media = RuntimeError("The provider is currently unavailable")

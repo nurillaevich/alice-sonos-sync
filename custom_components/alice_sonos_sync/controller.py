@@ -1,11 +1,17 @@
 """The sync engine: watches the Alice (Yandex Station) player and drives one or
-more Sonos (Music Assistant) players — smooth handoff on start, smooth
-stop/restore on stop.
+more Sonos players — smooth handoff on start, smooth stop/restore on stop.
 
-Multi-room: when several outputs are configured, they are joined into a Music
-Assistant group (leader = the first one) so every room plays the same track in
-perfect sync — Sonos groups natively, so the members stay sample-locked to the
-leader; volume steps go to all outputs in the same step.
+Two ways to get Alice's track onto a Sonos:
+- a native Sonos entity (HA's own Sonos integration): the track's stream URL
+  is resolved with the YandexStation integration's own Yandex session and
+  played with media_player.play_media — no Music Assistant, no extra login;
+- a Music Assistant player: music_assistant.play_media with a
+  yandex_music://track/<id> URI (needs the Yandex Music provider in MA).
+
+Multi-room: when several outputs are configured, they are joined to the
+leader (the first one) so every room plays the same track in sync — Sonos
+groups natively, so the members stay sample-locked to the leader; volume steps
+go to all outputs in the same step.
 
 Sonos-specific: a pause/resume pressed on the Sonos itself (app, touch
 controls) is mirrored to Alice, and after a stop every Sonos gets its playing
@@ -27,7 +33,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, State, callback
-from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.event import (
     EventStateChangedData,
     async_track_state_change_event,
@@ -85,6 +91,15 @@ UNAVAILABLE_STATES = (None, "unavailable", "unknown")
 # Sources that mean someone else is using the speaker — a phone's AirPlay, the
 # TV input, line-in. Alice's stop or pause must never fade/pause those.
 EXTERNAL_SOURCES = ("airplay", "tv", "line-in", "line_in", "linein", "bluetooth", "spotify connect")
+# The same on a native Sonos entity, which reports them as its content URI.
+EXTERNAL_CONTENT_PREFIXES = ("x-sonos-vli:", "x-sonos-htastream:", "x-rincon-stream:")
+
+PLATFORM_MUSIC_ASSISTANT = "music_assistant"
+
+# Yandex Music file request used by the YandexStation integration's own
+# "stream to another speaker" feature: 320 kbps mp3 plays on every Sonos.
+STREAM_QUALITY = "lossless"
+STREAM_CODECS = "mp3"
 
 # MediaPlayerEntityFeature.GROUPING — the supported_features bit a player sets
 # when it can be grouped via media_player.join. Read it up front so we can warn
@@ -93,7 +108,7 @@ FEATURE_GROUPING = 524288
 
 
 class PlaybackFailedError(Exception):
-    """Music Assistant could not start the handed-off track on the outputs."""
+    """The handed-off track could not be started on the outputs."""
 
 
 def _safe_float(value: Any, default: float) -> float:
@@ -140,6 +155,10 @@ class SyncController:
         # something new the user starts from the Sonos app.
         self._paused_by_sonos: bool = False
         self._paused_outputs_content: dict[str, Any] = {}
+        # What each output reported as its content once our handoff started on
+        # it. Anything else playing there later — the azan, a phone's AirPlay,
+        # the TV — is not ours to fade or pause.
+        self._our_content: dict[str, Any] = {}
         # Repairs issue raised when Music Assistant cannot play the track (e.g.
         # the Yandex Music provider is not set up), cleared on the next success.
         self._play_issue_id = f"play_media_failed_{entry.entry_id}"
@@ -276,16 +295,55 @@ class SyncController:
     def _any_output_playing(self) -> bool:
         return any(self._state(e) == "playing" for e in self.sonos_entities)
 
-    @staticmethod
-    def _is_external_source(source: Any) -> bool:
-        return str(source or "").strip().lower() in EXTERNAL_SOURCES
+    def _is_our_state(self, state: State | None) -> bool:
+        """The player shows our handed-off stream, not something that has taken
+        the speaker over since: an outside source (AirPlay, TV, line-in) or any
+        other content (the azan) than what it played once our handoff began."""
+        if state is None:
+            return False
+        if str(state.attributes.get("source") or "").strip().lower() in EXTERNAL_SOURCES:
+            return False
+        content = state.attributes.get("media_content_id")
+        if str(content or "").startswith(EXTERNAL_CONTENT_PREFIXES):
+            return False
+        ours = self._our_content.get(state.entity_id)
+        return ours in (None, "") or content == ours
 
     def _playing_our_stream(self, entity_id: str) -> bool:
-        """Playing, and not from an outside source (AirPlay, TV, line-in) that
-        has taken the speaker over since the handoff."""
-        return self._state(entity_id) == "playing" and not self._is_external_source(
-            self._attr(entity_id, "source")
+        state = self.hass.states.get(entity_id)
+        return state is not None and state.state == "playing" and self._is_our_state(state)
+
+    def _platform(self, entity_id: str) -> str | None:
+        entry = er.async_get(self.hass).async_get(entity_id)
+        return entry.platform if entry else None
+
+    def _uses_music_assistant(self, entity_id: str) -> bool:
+        """Music Assistant players play yandex_music:// URIs; every other
+        player (a native Sonos) gets a direct stream URL. Unknown platforms keep
+        the Music Assistant path, as before 1.1."""
+        return self._platform(entity_id) in (None, PLATFORM_MUSIC_ASSISTANT)
+
+    async def _resolve_stream_url(self, track_id: str) -> str:
+        """A URL the Sonos can play for Alice's track, made the way the
+        YandexStation integration streams to other speakers: its own Yandex
+        session fetches the file info, its HTTP view proxies the stream (with
+        Range support, so seeking works). Raises on any failure."""
+        component = self.hass.data.get("entity_components", {}).get("media_player")
+        station = component.get_entity(self.alice_entity) if component else None
+        quasar = getattr(station, "quasar", None)
+        if quasar is None:
+            raise RuntimeError(
+                f"{self.alice_entity} is not a YandexStation media player "
+                "(its Yandex session is needed to get the track)"
+            )
+        # Imported here: YandexStation is a separate custom integration.
+        from custom_components.yandex_station.core import stream  # noqa: PLC0415
+        from custom_components.yandex_station.core.yandex_music import (  # noqa: PLC0415
+            get_file_info,
         )
+
+        info = await get_file_info(quasar.session, track_id, STREAM_QUALITY, STREAM_CODECS)
+        return stream.get_url(info["url"], info["codec"])
 
     def _effective_leader(self) -> str:
         """The first output that is actually available, so an offline
@@ -528,9 +586,9 @@ class SyncController:
         if old is None or new is None:
             return
         if old.state == "playing" and new.state == "paused":
-            # A paused AirPlay/TV stream that had taken the Sonos over is not
-            # a pause of Alice's music.
-            if self._is_external_source(old.attributes.get("source")):
+            # A paused AirPlay/TV stream (or the azan) that had taken the Sonos
+            # over is not a pause of Alice's music.
+            if not self._is_our_state(old):
                 return
             if self._alice_on_handed_off_track():
                 _LOGGER.debug("Sonos %s paused from outside — confirming", new.entity_id)
@@ -707,6 +765,15 @@ class SyncController:
         content_id = alice.attributes.get("media_content_id")
         if content_id in INVALID_CONTENT_IDS:
             return
+        # 0a) Leader failover: pick the effective leader fresh each run as the
+        #     first AVAILABLE output, so an offline configured leader
+        #     (sonos_entities[0]) does not break grouping/play/seek/pause for
+        #     every room. If nothing is available, there is nothing to play to —
+        #     and nothing handed off, so a later stop must not touch Alice.
+        self.leader = self._effective_leader()
+        if not self._available_outputs():
+            _LOGGER.warning("No Sonos output is available — skipping handoff")
+            return
         # Remember the track we're committing to hand off BEFORE the (blocking,
         # possibly multi-second) play_media, so a voice-command blip landing
         # mid-handoff is recognised as a resume of THIS track, not a re-trigger
@@ -725,15 +792,6 @@ class SyncController:
         gap = int(self._opt(OPT_ALICE_GAP_MS)) / 1000
         alice_start_volume = _safe_float(alice.attributes.get("volume_level"), 0.5)
 
-        # 0a) Leader failover: pick the effective leader fresh each run as the
-        #     first AVAILABLE output, so an offline configured leader
-        #     (sonos_entities[0]) does not break grouping/play/seek/pause for
-        #     every room. If nothing is available, there is nothing to play to.
-        self.leader = self._effective_leader()
-        if not self._available_outputs():
-            _LOGGER.warning("No Sonos output is available — skipping handoff")
-            return
-
         # 0b) Multi-room: make sure all outputs are in one synced group. Force a
         #    re-join on a cold start (leader not already playing: first play, or
         #    after a stop/pause) and when the user opted to regroup every track.
@@ -746,7 +804,8 @@ class SyncController:
         )
 
         # 1) All outputs to floor volume (fault-isolated), then start the same
-        #    track via Music Assistant on the leader (the group follows it).
+        #    track on the leader (the group follows it): a direct stream URL for
+        #    a native Sonos, a yandex_music:// URI for a Music Assistant player.
         #    Snapshot each output's content id FIRST so step 2 can tell when a
         #    member actually switches to the new track (not just stays 'playing'
         #    on the previous one).
@@ -758,25 +817,41 @@ class SyncController:
             entity_id: _safe_float(self._attr(entity_id, "volume_level"), floor)
             for entity_id in self.sonos_entities
         }
-        media_id = f"{self._opt(OPT_TRACK_URI_PREFIX)}{content_id}"
+        via_music_assistant = self._uses_music_assistant(self.leader)
+        media_id = (
+            f"{self._opt(OPT_TRACK_URI_PREFIX)}{content_id}"
+            if via_music_assistant
+            else f"Yandex Music track {content_id}"
+        )
         await self._set_outputs_volume(floor)
         try:
-            await self.hass.services.async_call(
-                "music_assistant",
-                "play_media",
-                {
-                    "media_id": media_id,
-                    "media_type": str(self._opt(OPT_MEDIA_TYPE)),
-                },
-                target={"entity_id": self.leader},
-                blocking=True,
-            )
+            if via_music_assistant:
+                await self.hass.services.async_call(
+                    "music_assistant",
+                    "play_media",
+                    {
+                        "media_id": media_id,
+                        "media_type": str(self._opt(OPT_MEDIA_TYPE)),
+                    },
+                    target={"entity_id": self.leader},
+                    blocking=True,
+                )
+            else:
+                url = await self._resolve_stream_url(content_id)
+                await self.hass.services.async_call(
+                    "media_player",
+                    "play_media",
+                    {"media_content_id": url, "media_content_type": "music"},
+                    target={"entity_id": self.leader},
+                    blocking=True,
+                )
         except Exception as err:  # noqa: BLE001 - any failure here means nothing plays
-            # Nothing started on the outputs (the usual cause: the Yandex Music
-            # provider is missing/unavailable in Music Assistant — "The provider
-            # is currently unavailable"). Put the outputs back, leave Alice
-            # playing untouched, forget the track so the next start retries,
-            # and surface the cause in Repairs.
+            # Nothing started on the outputs (usual causes: the Yandex Music
+            # provider is missing in Music Assistant — "The provider is
+            # currently unavailable" — or YandexStation could not get the
+            # track). Put the outputs back, leave Alice playing untouched,
+            # forget the track so the next start retries, and surface the cause
+            # in Repairs.
             await self._restore_outputs(pre_play_volumes)
             self._handoff_content_id = None
             ir.async_create_issue(
@@ -790,14 +865,20 @@ class SyncController:
                     "title": self.entry.title,
                     "media_id": media_id,
                     "player": self.leader,
-                    "error": str(err),
+                    "error": str(err) or type(err).__name__,
                 },
             )
+            hint = (
+                "If the provider is unavailable, add and sign in to the matching "
+                "music provider (Yandex Music) in Music Assistant -> Settings -> "
+                "Music sources, or pick the native Sonos entity instead"
+                if via_music_assistant
+                else "The YandexStation integration must be set up and logged in"
+            )
             raise PlaybackFailedError(
-                f"Music Assistant could not play {media_id} on {self.leader}: "
-                f"{str(err).rstrip('.')}. The music stays on Alice. If the provider is "
-                "unavailable, add and sign in to the matching music provider "
-                "(Yandex Music) in Music Assistant -> Settings -> Music sources"
+                f"Could not play {media_id} on {self.leader}: "
+                f"{(str(err) or type(err).__name__).rstrip('.')}. The music stays on "
+                f"Alice. {hint}"
             ) from err
         ir.async_delete_issue(self.hass, DOMAIN, self._play_issue_id)
 
@@ -815,6 +896,13 @@ class SyncController:
                 e for e in self.sonos_entities if not self._output_switched(e, pre_play_content)
             ]
             _LOGGER.debug("Outputs not on the new track before seek (continuing): %s", stragglers)
+        # Remember what our stream looks like on each output, so a stop or a
+        # pause later only ever touches that — not the azan or AirPlay.
+        self._our_content = {
+            entity_id: self._attr(entity_id, "media_content_id")
+            for entity_id in self.sonos_entities
+            if self._output_switched(entity_id, pre_play_content)
+        }
 
         # 3+4) Seek to Alice's current second and wait for the player to accept
         #      the new position — UNLESS skip_seek is on (for players whose
@@ -1080,6 +1168,7 @@ class SyncController:
         # outputs are still playing.
         self._handoff_content_id = None
         self._paused_by_sonos = False
+        self._our_content = {}
 
         # 4) Restore Alice's volume (always reached unless cancelled).
         await self._set_volume(self.alice_entity, float(self._opt(OPT_ALICE_RESTORE_VOLUME)))

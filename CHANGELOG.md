@@ -3,6 +3,28 @@
 Barcha muhim o'zgarishlar shu faylda qayd etiladi.
 Format [Keep a Changelog](https://keepachangelog.com/) asosida.
 
+## [1.1.0] - 2026-10-27
+
+### Qo'shildi
+- **Music Assistant'siz ishlash.** Chiqish ro'yxatida endi **HA'ning o'z Sonos
+  integratsiyasidagi kolonkalar** ham chiqadi. Shunday kolonka tanlansa,
+  Alice chalayotgan trek YandexStation integratsiyasining o'z Yandex sessiyasi
+  orqali olinadi (xuddi YandexStation'ning «стриминг музыки» funksiyasidagidek)
+  va Sonos'ga to'g'ridan-to'g'ri stream qilinadi — Music Assistant ham,
+  qo'shimcha Yandex login ham kerak emas. Seek (Alice turgan sekunddan
+  boshlash) va crossfade avvalgidek ishlaydi. Music Assistant kolonkalari ham
+  ro'yxatda qoladi (ular uchun MA'da Yandex Music kerak).
+- Real holatdan: Music Assistant o'chirilgach, juftlik qo'shish oynasida
+  kolonkalar ro'yxati bo'sh chiqardi («Нет доступных элементов»).
+
+### Tuzatildi
+- Integratsiya endi Sonos'da **faqat o'zi qo'ygan oqimni** to'xtatadi: uzatishdan
+  keyin Sonos'da azan, AirPlay yoki TV chalinsa, Alice to'xtaganda ularga
+  tegilmaydi (native Sonos AirPlay/TV'ni `x-sonos-vli:` / `x-sonos-htastream:`
+  ko'rinishida ko'rsatadi — bular ham tanildi).
+- Kolonka tarmoqda bo'lmagani uchun uzatish o'tkazib yuborilsa, keyingi
+  to'xtashda Alice ovozi endi o'zgartirilmaydi (avval 50% ga qo'yilardi).
+
 ## [1.0.1] - 2026-10-27
 
 ### Tuzatildi

@@ -14,30 +14,30 @@
         "description": "Manba (Yandex Station / Alice) va chiqish Sonos kolonka(lar)ni tanlang. Bir nechta Sonos tanlasangiz — multi-room: hammasi avtomatik guruhlanib, bir xil musiqani sinxron chaladi. Barcha vaqt va ovoz sozlamalarini keyinroq «Sozlash» (Configure) orqali o'zgartirishingiz mumkin.",
         "data": {
           "alice_entity": "Alice (Yandex Station) — manba",
-          "sonos_entities": "Sonos kolonkalar (Music Assistant) — chiqish"
+          "sonos_entities": "Sonos kolonkalar — chiqish"
         },
         "data_description": {
           "alice_entity": "Musiqa shu yerda boshlanadi va ovoz bilan boshqariladigan media player.",
-          "sonos_entities": "Sonos'ning Music Assistant'dagi entity'lari (HA'ning o'z Sonos integratsiyasi entity'si emas). Bir nechta tanlasangiz, barcha xonalarda bir xil, sinxron chaladi — birinchisi yetakchi bo'ladi."
+          "sonos_entities": "HA'ning Sonos integratsiyasidagi kolonkalar (tavsiya: Music Assistant ham, qo'shimcha Yandex login ham kerak emas — qo'shiq YandexStation hisobi orqali olinadi) yoki Music Assistant kolonkalari (MA'da Yandex Music provayderi kerak). Bir nechta tanlasangiz, barcha xonalarda bir xil, sinxron chaladi — birinchisi yetakchi bo'ladi."
         }
       },
       "group": {
         "title": "Sonos guruhi",
         "description": "2 yoki undan ortiq kolonkani bitta knopka (switch) bilan bir-biriga ulaydigan guruh yaratadi. Knopka YOQILGANDA barcha kolonkalar yetakchiga qo'shilib, bir xil musiqani sinxron chaladi; O'CHIRILGANDA har biri yana mustaqil bo'ladi. Alice bu yerda ishtirok etmaydi — bu faqat kolonkalarni birlashtirish uchun.",
         "data": {
-          "group_leader": "Yetakchi kolonka (Music Assistant)",
-          "group_members": "Qo'shiladigan kolonkalar (Music Assistant)"
+          "group_leader": "Yetakchi kolonka",
+          "group_members": "Qo'shiladigan kolonkalar"
         },
         "data_description": {
           "group_leader": "Guruhning «xo'jayini» — qolganlari shunga qo'shiladi va shu chalayotgan narsani takrorlaydi.",
-          "group_members": "Yetakchiga ulanadigan bir yoki bir nechta kolonka. Hammasi Music Assistant entity'lari bo'lishi shart."
+          "group_members": "Yetakchiga ulanadigan bir yoki bir nechta kolonka. Hammasi bir turdan bo'lsin: yoki hammasi HA'ning Sonos integratsiyasidan, yoki hammasi Music Assistant'dan."
         }
       }
     },
     "error": {
       "same_entity": "Manba chiqish kolonkalari ichida bo'lmasligi kerak.",
       "no_outputs": "Kamida bitta Sonos kolonka tanlang.",
-      "music_assistant_missing": "Music Assistant integratsiyasi topilmadi. Avval Music Assistant'ni o'rnatib sozlang.",
+      "music_assistant_missing": "Music Assistant integratsiyasi topilmadi. HA'ning Sonos integratsiyasidagi kolonkani tanlang (Music Assistant kerak emas) yoki avval Music Assistant'ni o'rnating.",
       "no_members": "Kamida bitta qo'shiladigan kolonka tanlang.",
       "leader_in_members": "Yetakchi kolonka qo'shiladiganlar ichida bo'lmasligi kerak."
     },
@@ -118,8 +118,8 @@
   },
   "issues": {
     "play_media_failed": {
-      "title": "Music Assistant qo'shiqni Sonos'da chala olmadi",
-      "description": "**{title}**: Music Assistant `{media_id}` trekini `{player}` kolonkasida chala olmadi, shuning uchun musiqa faqat Alice'da qoldi (Sonos ovozi avvalgi holatiga qaytarildi).\n\nXato: `{error}`\n\nAgar xatoda *The provider is currently unavailable* yozilgan bo'lsa — Music Assistant'da Yandex Music provayderi qo'shilmagan yoki ishlamayapti. Music Assistant → Settings → Music sources → «Add a music source» → **Yandex Music** ni qo'shing va Yandex hisobingizga kiring. Boshqa provayder ishlatsangiz, integratsiya sozlamalaridagi «Trek URI prefiksi»ni tekshiring. Keyingi muvaffaqiyatli uzatishda bu ogohlantirish o'zi yo'qoladi."
+      "title": "Qo'shiq Sonos'da chalinmadi",
+      "description": "**{title}**: `{media_id}` trekini `{player}` kolonkasida chalib bo'lmadi, shuning uchun musiqa faqat Alice'da qoldi (Sonos ovozi avvalgi holatiga qaytarildi).\n\nXato: `{error}`\n\n- **Music Assistant kolonkasi** tanlangan bo'lsa va xatoda *The provider is currently unavailable* yozilgan bo'lsa — MA'da Yandex Music provayderi yo'q. Eng osoni: integratsiyani **HA'ning Sonos integratsiyasidagi kolonka** bilan qayta qo'shing — unda Music Assistant ham, Yandex login ham kerak emas.\n- **HA'ning Sonos kolonkasi** tanlangan bo'lsa — YandexStation integratsiyasi Yandex hisobiga kirganini va Alice shu integratsiyaning media player'i ekanini tekshiring.\n\nKeyingi muvaffaqiyatli uzatishda bu ogohlantirish o'zi yo'qoladi."
     }
   }
 }

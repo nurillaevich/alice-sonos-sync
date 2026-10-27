@@ -50,29 +50,28 @@ Music Assistant xato bersa **Repairs**'da ogohlantirish.
 
 ---
 
-## 🆚 Alice va Sonos — qaysi entity'ni tanlash kerak
+## 🆚 Qaysi Sonos entity'sini tanlash kerak
 
-| | **Alice (Yandex Station)** | **Sonos (Music Assistant)** |
+| Chiqish | Qanday ishlaydi | Nima kerak |
 |---|---|---|
-| **Roli** | MANBA + boshqaruv | CHIQISH |
-| **Qaysi entity** | `media_player.yandex_station_...` | Sonos'ning **Music Assistant'dagi** `media_player` entity'si |
-| **Diqqat** | — | ❗ HA'ning o'z **Sonos** integratsiyasi entity'si emas, aynan **Music Assistant** entity'si bo'lsin — chunki `music_assistant.play_media` faqat MA entity bilan ishlaydi. Integratsiya ro'yxatida faqat MA entity'lari ko'rinadi, adashib bo'lmaydi. |
+| ⭐ **HA'ning Sonos integratsiyasi** (`media_player.zal_zal` kabi) | Trek YandexStation'ning o'z Yandex sessiyasi orqali olinib, Sonos'ga to'g'ridan-to'g'ri stream qilinadi | Faqat Sonos va YandexStation integratsiyalari. **Music Assistant ham, qo'shimcha Yandex login ham kerak emas** (v1.1.0+) |
+| **Music Assistant** kolonkasi | `music_assistant.play_media` → `yandex_music://track/<id>` | Music Assistant + unda **Yandex Music** provayderi |
+
+Ro'yxatda ikkala tur ham chiqadi. Agar Music Assistant ishlatmasangiz — HA'ning
+Sonos kolonkasini tanlang.
 
 ---
 
 ## ✅ Talablar
 
 1. **Home Assistant** 2024.12+ (integratsiya uchun; blueprintlarga 2024.10 yetadi).
-2. **[Music Assistant](https://music-assistant.io/)** integratsiyasi o'rnatilgan.
-3. **Sonos** Music Assistant'ga qo'shilgan: Music Assistant → **Settings → Providers →
-   Add provider → Sonos** (S2 tizimi uchun; eski S1 kolonkalar uchun **Sonos S1**).
-   Shundan keyin HA'da Sonos'ning Music Assistant `media_player` entity'si paydo bo'ladi.
-4. **Yandex Station** Home Assistant'ga ulangan (mas.
-   [AlexxIT/YandexStation](https://github.com/AlexxIT/YandexStation)) va uning
-   `media_player` entity'si `media_content_id`, `media_position` atributlarini beradi.
-5. Music Assistant'da **Yandex Music** provayderi qo'shilgan — integratsiya trekni
-   `yandex_music://track/<id>` ko'rinishida beradi. Boshqa provayder ishlatsangiz —
-   **Configure → Trek URI prefiksi** ni o'zgartiring.
+2. **Yandex Station** Home Assistant'ga
+   [AlexxIT/YandexStation](https://github.com/AlexxIT/YandexStation) orqali ulangan
+   (lokal rejimda, Yandex hisobiga kirilgan).
+3. **Sonos** — HA'ning o'z Sonos integratsiyasi orqali (tavsiya, Music Assistant
+   kerak emas) **yoki** Music Assistant orqali.
+4. Faqat Music Assistant kolonkasini tanlasangiz: MA'da **Yandex Music** provayderi
+   qo'shilgan bo'lsin (trek `yandex_music://track/<id>` ko'rinishida beriladi).
 
 ---
 

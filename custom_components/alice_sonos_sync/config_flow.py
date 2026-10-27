@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er, selector
 
 from .const import (
     CONF_ALICE_ENTITY,
@@ -66,6 +66,22 @@ def _number(min_: float, max_: float, step: float, unit: str | None = None) -> s
     return selector.NumberSelector(config)
 
 
+def _speaker_selector(multiple: bool = False) -> selector.EntitySelector:
+    """Speakers from HA's own Sonos integration (no Music Assistant needed) or
+    from Music Assistant."""
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(
+            multiple=multiple,
+            filter=[
+                selector.EntityFilterSelectorConfig(domain="media_player", integration="sonos"),
+                selector.EntityFilterSelectorConfig(
+                    domain="media_player", integration="music_assistant"
+                ),
+            ],
+        )
+    )
+
+
 def _group_unique_id(leader: str, members: list[str]) -> str:
     """Stable id for a speaker group (order-independent members)."""
     return "group__" + "__".join([leader, *sorted(members)])
@@ -97,7 +113,9 @@ class AliceSonosSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "no_outputs"
             elif user_input[CONF_ALICE_ENTITY] in outputs:
                 errors["base"] = "same_entity"
-            elif not self.hass.services.has_service("music_assistant", "play_media"):
+            elif self._needs_music_assistant(outputs) and not self.hass.services.has_service(
+                "music_assistant", "play_media"
+            ):
                 errors["base"] = "music_assistant_missing"
             else:
                 data = {**user_input, CONF_ENTRY_TYPE: ENTRY_TYPE_PAIR}
@@ -119,18 +137,20 @@ class AliceSonosSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         domain="media_player", integration="yandex_station"
                     )
                 ),
-                # Outputs = Music Assistant players only: music_assistant.play_media
-                # does not accept the native Sonos integration's entities.
-                vol.Required(CONF_SONOS_ENTITIES): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="media_player",
-                        integration="music_assistant",
-                        multiple=True,
-                    )
-                ),
+                vol.Required(CONF_SONOS_ENTITIES): _speaker_selector(multiple=True),
             }
         )
         return self.async_show_form(step_id="pair", data_schema=schema, errors=errors)
+
+    def _needs_music_assistant(self, outputs: list[str]) -> bool:
+        """Native Sonos outputs play a direct stream; only Music Assistant (or
+        unknown) players need the music_assistant.play_media service."""
+        registry = er.async_get(self.hass)
+        return any(
+            (entry := registry.async_get(entity_id)) is None
+            or entry.platform == "music_assistant"
+            for entity_id in outputs
+        )
 
     async def async_step_group(
         self, user_input: dict[str, Any] | None = None
@@ -159,18 +179,8 @@ class AliceSonosSyncConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_GROUP_LEADER): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="media_player", integration="music_assistant"
-                    )
-                ),
-                vol.Required(CONF_GROUP_MEMBERS): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="media_player",
-                        integration="music_assistant",
-                        multiple=True,
-                    )
-                ),
+                vol.Required(CONF_GROUP_LEADER): _speaker_selector(),
+                vol.Required(CONF_GROUP_MEMBERS): _speaker_selector(multiple=True),
             }
         )
         return self.async_show_form(step_id="group", data_schema=schema, errors=errors)

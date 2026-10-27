@@ -66,6 +66,7 @@ class FakePlayers:
             ("media_player", "media_seek"): self._seek,
             ("media_player", "join"): self._join,
             ("media_player", "unjoin"): self._unjoin,
+            ("media_player", "play_media"): self._play_url,
             ("music_assistant", "play_media"): self._play_media,
         }
         for (domain, service), handler in handlers.items():
@@ -104,6 +105,20 @@ class FakePlayers:
 
     async def _unjoin(self, call: ServiceCall) -> None:
         return
+
+    async def _play_url(self, call: ServiceCall) -> None:
+        """A native Sonos told to play a URL (its group follows)."""
+        for leader in _ids(call):
+            group = self.attr(leader, "group_members") or [leader]
+            for entity_id in {leader, *group}:
+                self.set(
+                    entity_id,
+                    "playing",
+                    source=None,
+                    media_content_id=call.data["media_content_id"],
+                    media_position=0,
+                    media_position_updated_at=dt_util.utcnow(),
+                )
 
     async def _play_media(self, call: ServiceCall) -> None:
         if self.fail_play_media is not None:
